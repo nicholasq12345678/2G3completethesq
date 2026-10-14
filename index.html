@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Math Pac-Man Game - Completing the Square</title>
     <style>
         body {
@@ -14,17 +15,24 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
 
         #game-container {
             position: relative;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         #ui {
             display: flex;
             justify-content: space-between;
-            width: 440px;
+            width: 100%;
+            max-width: 440px;
             margin-bottom: 10px;
             font-size: 18px;
             font-weight: bold;
@@ -34,6 +42,50 @@
             border: 4px solid #1919a6;
             box-shadow: 0 0 15px #1919a6;
             background-color: #000;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* On-Screen D-Pad Controls for iPad/Mobile */
+        #controls {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dpad-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .dpad-btn {
+            width: 60px;
+            height: 60px;
+            background-color: #222;
+            border: 2px solid #1919a6;
+            color: #ffcc00;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px #000;
+            touch-action: manipulation;
+        }
+
+        .dpad-btn:active {
+            background-color: #333;
+            transform: translateY(2px);
+            box-shadow: 0 2px #000;
+        }
+
+        .dpad-spacer {
+            width: 60px;
+            height: 60px;
         }
 
         /* Question Modal Styling */
@@ -47,7 +99,7 @@
             border: 3px solid #ffcc00;
             padding: 20px;
             border-radius: 10px;
-            width: 320px;
+            width: 300px;
             box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
             text-align: center;
             z-index: 10;
@@ -118,6 +170,21 @@
         </div>
         <canvas id="canvas" width="440" height="440"></canvas>
 
+        <!-- On-Screen Controls -->
+        <div id="controls">
+            <div class="dpad-row">
+                <button class="dpad-btn" onclick="setDirection(0, -1)" ontouchstart="setDirection(0, -1); event.preventDefault();">▲</button>
+            </div>
+            <div class="dpad-row">
+                <button class="dpad-btn" onclick="setDirection(-1, 0)" ontouchstart="setDirection(-1, 0); event.preventDefault();">◄</button>
+                <div class="dpad-spacer"></div>
+                <button class="dpad-btn" onclick="setDirection(1, 0)" ontouchstart="setDirection(1, 0); event.preventDefault();">►</button>
+            </div>
+            <div class="dpad-row">
+                <button class="dpad-btn" onclick="setDirection(0, 1)" ontouchstart="setDirection(0, 1); event.preventDefault();">▼</button>
+            </div>
+        </div>
+
         <!-- Question Popup Modal -->
         <div id="modal">
             <h3 id="modal-title">Math Challenge!</h3>
@@ -132,7 +199,7 @@
     </div>
 
     <script>
-        // Updated Question Bank for Completing the Square: (x - a)² + b[cite: 5]
+        // Question Bank for Completing the Square: (x - a)² + b[cite: 5]
         const questionBank = [
             { eq: "x² + 10x + 10", a: -5, b: -15 }, //[cite: 5]
             { eq: "x² - 8", a: 0, b: -8 },          //[cite: 5]
@@ -204,8 +271,8 @@
         let powerModeEndTime = 0; 
 
         const REGULAR_DOT_VAL = 10;
-        const GHOST_VAL = REGULAR_DOT_VAL * 10; // 100 points
-        const CAUGHT_PENALTY = REGULAR_DOT_VAL * 2; // 20 points
+        const GHOST_VAL = REGULAR_DOT_VAL * 10;
+        const CAUGHT_PENALTY = REGULAR_DOT_VAL * 2;
 
         // Pac-Man State
         const pacman = {
@@ -245,23 +312,28 @@
                 }
             }
 
-            // Select 8 positions for question dots
             for (let i = 0; i < 8 && walkable.length > 0; i++) {
                 let idx = Math.floor(Math.random() * walkable.length);
                 questionDots.push(walkable.splice(idx, 1)[0]);
             }
 
-            // Remaining positions are regular dots
             dots = walkable;
         }
 
-        // Input Handling
+        // Handle Touch / Button Direction Input
+        function setDirection(dx, dy) {
+            if (isPaused) return;
+            pacman.nextDirX = dx;
+            pacman.nextDirY = dy;
+        }
+
+        // Handle Keyboard Input
         document.addEventListener('keydown', (e) => {
             if (isPaused) return;
-            if (e.key === 'ArrowUp') { pacman.nextDirX = 0; pacman.nextDirY = -1; }
-            if (e.key === 'ArrowDown') { pacman.nextDirX = 0; pacman.nextDirY = 1; }
-            if (e.key === 'ArrowLeft') { pacman.nextDirX = -1; pacman.nextDirY = 0; }
-            if (e.key === 'ArrowRight') { pacman.nextDirX = 1; pacman.nextDirY = 0; }
+            if (e.key === 'ArrowUp') setDirection(0, -1);
+            if (e.key === 'ArrowDown') setDirection(0, 1);
+            if (e.key === 'ArrowLeft') setDirection(-1, 0);
+            if (e.key === 'ArrowRight') setDirection(1, 0);
         });
 
         function triggerQuestion(type, ghostRef = null) {
@@ -289,6 +361,18 @@
             modal.style.display = 'block';
         }
 
+        function checkWinCondition() {
+            if (dots.length === 0 && questionDots.length === 0) {
+                isPaused = true;
+                setTimeout(() => {
+                    alert("Congratulations! You cleared all the dots!\nFinal Score: " + score);
+                    resetGame();
+                }, 100);
+                return true;
+            }
+            return false;
+        }
+
         function submitAnswer() {
             const userA = parseInt(document.getElementById('ans-a').value);
             const userB = parseInt(document.getElementById('ans-b').value);
@@ -308,7 +392,11 @@
                     powerModeEndTime = Date.now() + 5000;
                 }
                 updateUI();
-                requestAnimationFrame(gameLoop);
+                
+                // Check win condition after answering a question dot
+                if (!checkWinCondition()) {
+                    requestAnimationFrame(gameLoop);
+                }
             } else {
                 if (questionType === 'ghost') {
                     lives--;
@@ -400,6 +488,9 @@
                     dots.splice(i, 1);
                     score += REGULAR_DOT_VAL;
                     updateUI();
+                    
+                    // Check win condition when collecting regular dots
+                    if (checkWinCondition()) return;
                 }
             }
 
